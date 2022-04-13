@@ -1,0 +1,20 @@
+{
+  "name": "@xaya/eth-delegator-contract",
+  "version": "0.1.0",
+  "description": "A Solidity contract for move delegation with support for meta transactions and selective delegation.",
+  "author": "Daniel Kraft <daniel@xaya.io>",
+  "license": "MIT",
+  "files": [
+    "/contracts/*.sol",
+    "/build/contracts/*.json",
+    "README.md"
+  ],
+  "dependencies": {
+    "@openzeppelin/contracts": "4.5.0"
+  },
+  "devDependencies": {
+    "@openzeppelin/test-helpers": "",
+    "@truffle/contract": "",
+    "truffle-assertions": ""
+  }
+}
