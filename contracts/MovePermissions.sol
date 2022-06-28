@@ -300,6 +300,40 @@ library MovePermissions
   }
 
   /**
+   * @dev Removes the child node at the given key below parent if it
+   * is empty.  This takes care to update all the book-keeping stuff, like
+   * parent.keys and the other child indices.
+   */
+  function removeChildIfEmpty (PermissionsNode storage parent,
+                               string memory key) private
+  {
+    PermissionsNode storage child = parent.children[key];
+    if (!isEmpty (child))
+      return;
+
+    uint oldIndex = child.indexAndOne;
+    delete parent.children[key];
+
+    /* If the child didn't exist at all, nothing to do.  */
+    if (oldIndex == 0)
+      return;
+
+    /* Remove the child in parent.keys by swapping in the last element
+       and popping at the tail.  */
+    if (oldIndex < parent.keys.length)
+      {
+        string memory last = parent.keys[parent.keys.length - 1];
+        parent.keys[oldIndex - 1] = last;
+
+        PermissionsNode storage lastNode = parent.children[last];
+        assert (lastNode.indexAndOne > 0);
+        lastNode.indexAndOne = oldIndex;
+      }
+
+    parent.keys.pop ();
+  }
+
+  /**
    * @dev Removes all "empty" tree nodes along the specified branch to clean
    * up storage.  If a node has no children and both permission maps are
    * empty (no keys with associations), then it will be removed.  This has
@@ -322,30 +356,10 @@ library MovePermissions
 
     /* Process the child node first, so descendant nodes further down
        are cleared now (if any).  */
-    PermissionsNode storage child = node.children[path[start]];
-    removeEmptyNodes (child, path, start + 1);
+    removeEmptyNodes (node.children[path[start]], path, start + 1);
 
     /* If the child node is empty, remove it.  */
-    if (isEmpty (child))
-      {
-        uint oldIndex = child.indexAndOne;
-        delete node.children[path[start]];
-
-        if (oldIndex > 0)
-          {
-            if (oldIndex < node.keys.length)
-              {
-                string memory last = node.keys[node.keys.length - 1];
-                node.keys[oldIndex - 1] = last;
-
-                PermissionsNode storage lastNode = node.children[last];
-                assert (lastNode.indexAndOne > 0);
-                lastNode.indexAndOne = oldIndex;
-              }
-
-            node.keys.pop ();
-          }
-      }
+    removeChildIfEmpty (node, path[start]);
   }
 
   /**
@@ -408,6 +422,66 @@ library MovePermissions
       internal
   {
     revokeTree (retrieveNode (root, path, false), false);
+  }
+
+  /* ************************************************************************ */
+
+  /**
+   * @dev Removes all expired permissions inside a PermissionsMap.
+   */
+  function expire (PermissionsMap storage map, uint256 atTime) private
+  {
+    /* removeEntry only affects (potentially) the elements from the removed
+       index onwards, since it either pops the last element if that is the
+       current one, or swaps in the last element into the current position.
+
+       Thus if we iterate in reverse order, a single pass is enough even if
+       we keep removing some of the elements while we do it.  */
+
+    for (int i = int (map.keys.length) - 1; i >= 0; --i)
+      {
+        address current = map.keys[uint (i)];
+        if (map.forAddress[current].expiration < atTime)
+          removeEntry (map, current);
+      }
+  }
+
+  /**
+   * @dev Revokes all expired permissions in the given subtree (i.e. permissions
+   * with a time earlier than the atTime timestamp).  Any child nodes that
+   * become empty will be removed as well (but not the initial node with
+   * which the method is called).
+   */
+  function expireTree (PermissionsNode storage node, uint256 atTime) private
+  {
+    expire (node.fullAccess, atTime);
+    expire (node.fallbackAccess, atTime);
+
+    /* As with expire, we process the children in reverse order, so that
+       we need only a single pass even if nodes are removed (swapped with
+       the last one) during the process.  */
+    for (int i = int (node.keys.length) - 1; i >= 0; --i)
+      {
+        string memory current = node.keys[uint (i)];
+        expireTree (node.children[current], atTime);
+        removeChildIfEmpty (node, current);
+      }
+  }
+
+  /**
+   * @dev Revokes all permissions expired at the given timestamp (i.e. earlier
+   * than atTime) in the subtree referenced.  Afterwards, all nodes that
+   * have become empty will be cleaned out up to (not including) the root.
+   */
+  function expireTree (PermissionsNode storage root, string[] memory path,
+                       uint256 atTime) internal
+  {
+    expireTree (retrieveNode (root, path, false), atTime);
+
+    /* Also remove parent nodes of the expired tree if they became empty
+       (expireTree only removes empty nodes below the first node on which
+       it gets called).  */
+    removeEmptyNodes (root, path, 0);
   }
 
   /* ************************************************************************ */

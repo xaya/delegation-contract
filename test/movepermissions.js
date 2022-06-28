@@ -167,4 +167,40 @@ contract ("MovePermissions", acc => {
     await expectKeys (["g", "id"], [], [], []);
   });
 
+  it ("expires permission trees correctly", async () => {
+    await mp.grant (["g", "id"], acc[0], 2, true);
+    await mp.grant (["g", "id"], acc[1], 2, false);
+    await mp.grant (["g", "id"], acc[2], 3, false);
+    await mp.grant (["g", "id"], acc[3], 2, false);
+    await mp.grant (["g", "id"], acc[4], 3, false);
+    await mp.grant (["g", "id"], acc[5], 2, false);
+    await mp.grant (["g", "id", "foo", "ba1"], acc[0], 5, false);
+    await mp.grant (["g", "id", "foo", "ba2"], acc[0], 20, false);
+    await mp.grant (["g", "id", "foo", "ba3"], acc[0], 5, false);
+    await mp.grant (["g", "id", "foo", "ba4"], acc[0], 20, false);
+    await mp.grant (["g", "id", "foo", "ba5"], acc[0], 5, false);
+
+    await mp.expireTree (["g", "id", "foo"], 10);
+    await expectKeys (["g", "id", "foo"], ["ba4", "ba2"], [], []);
+    await mp.expireTree (["g", "id", "foo"], 100);
+    assert.isFalse (await mp.isEmpty (["g", "id"]));
+    assert.isTrue (await mp.isEmpty (["g", "id", "foo"]));
+    await expectKeys (["g", "id"], [],
+                      [acc[1], acc[2], acc[3], acc[4], acc[5]], [acc[0]]);
+
+    assert.isTrue (await mp.check (["g", "id", "foo"], acc[0], 1));
+    await mp.expireTree ([], 3);
+    assert.isFalse (await mp.check (["g", "id", "foo"], acc[0], 1));
+    await expectKeys (["g", "id"], [], [acc[4], acc[2]], []);
+    await mp.expireTree ([], 10);
+    /* Expiring an empty tree / path is fine.  */
+    await mp.expireTree (["foo", "bar"], 10);
+
+    /* We should have expired everything (but that keeps the root node
+       itself intact but empty).  */
+    assert.isTrue (await mp.isEmpty (["g"]));
+    assert.isFalse (await mp.isEmpty ([]));
+    await expectKeys ([], [], [], []);
+  });
+
 });

@@ -79,4 +79,9 @@ contract MovePermissionsTestHelper
     MovePermissions.revokeTree (root, path);
   }
 
+  function expireTree (string[] memory path, uint256 atTime) public
+  {
+    MovePermissions.expireTree (root, path, atTime);
+  }
+
 }
