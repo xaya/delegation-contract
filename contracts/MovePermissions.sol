@@ -292,7 +292,7 @@ library MovePermissions
    * @dev Checks if a permissions node is empty, which means that it
    * has no children and no explicit permissions set.
    */
-  function isEmpty (PermissionsNode storage node) private view returns (bool)
+  function isEmpty (PermissionsNode storage node) internal view returns (bool)
   {
     return node.keys.length == 0
         && node.fullAccess.keys.length == 0
