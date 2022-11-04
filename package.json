@@ -16,6 +16,7 @@
   "devDependencies": {
     "@openzeppelin/test-helpers": "",
     "@truffle/contract": "",
+    "@xaya/wchi": "1.0.0",
     "truffle-assertions": ""
   }
 }
