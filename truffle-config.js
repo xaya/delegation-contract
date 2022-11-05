@@ -16,88 +16,35 @@ module.exports = {
     }
   },
   networks: {
-    ropsten: {
-      provider: function ()
-        {
-          return new HDWalletProvider ({
-            privateKeys: [process.env.PRIVKEY],
-            providerOrUrl: "https://ropsten.infura.io/v3/" + process.env.API_KEY
-          });
-        },
-      network_id: 3,
-      gas: 4000000
-    },
-    goerli: {
-      provider: function ()
-        {
-          return new HDWalletProvider ({
-            privateKeys: [process.env.PRIVKEY],
-            providerOrUrl: "https://goerli.infura.io/v3/" + process.env.API_KEY
-          });
-        },
-      network_id: 5,
-      gas: 4000000,
-      gasPrice: web3.utils.toWei ('1', 'gwei')
-    },
-    live: {
-      provider: function ()
-        {
-          return new HDWalletProvider ({
-            privateKeys: [process.env.PRIVKEY],
-            providerOrUrl: "https://mainnet.infura.io/v3/" + process.env.API_KEY
-          });
-        },
-      network_id: 1,
-      gas: 1000000
-    },
     mumbai: {
       provider: function ()
         {
           return new HDWalletProvider ({
             privateKeys: [process.env.PRIVKEY],
-            providerOrUrl: "https://polygon-mumbai.infura.io/v3/" + process.env.API_KEY
+            providerOrUrl: "https://rpc.ankr.com/polygon_mumbai"
           });
         },
       network_id: 80001,
       confirmations: 2,
       timeoutBlocks: 200,
-      gasPrice: web3.utils.toWei ('1', 'gwei'),
+      maxFeePerGas: web3.utils.toWei ('50', 'gwei'),
+      maxPriorityFeePerGas: web3.utils.toWei ('35', 'gwei'),
+      forwarder: "0x69015912AA33720b842dCD6aC059Ed623F28d9f7"
     },
-    matic: {
+    polygon: {
       provider: function ()
         {
           return new HDWalletProvider ({
             privateKeys: [process.env.PRIVKEY],
-            providerOrUrl: "https://polygon-mainnet.infura.io/v3/" + process.env.API_KEY
+            providerOrUrl: "https://polygon-rpc.com/"
           });
         },
       network_id: 137,
       confirmations: 2,
       timeoutBlocks: 200,
-      gasPrice: web3.utils.toWei ('35', 'gwei'),
-    },
-    xdai: {
-      provider: function ()
-        {
-          return new HDWalletProvider ({
-            privateKeys: [process.env.PRIVKEY],
-            providerOrUrl: "https://rpc.xdaichain.com/"
-          });
-        },
-      network_id: 100,
-      gas: 8000000,
-      gasPrice: web3.utils.toWei ('1', 'gwei')
-    },
-    bsc: {
-      provider: function ()
-        {
-          return new HDWalletProvider ({
-            privateKeys: [process.env.PRIVKEY],
-            providerOrUrl: "https://bsc-dataseed1.binance.org/"
-          });
-        },
-      network_id: 56,
-      gasPrice: web3.utils.toWei ('5', 'gwei')
+      maxFeePerGas: web3.utils.toWei ('100', 'gwei'),
+      maxPriorityFeePerGas: web3.utils.toWei ('35', 'gwei'),
+      forwarder: "0xf0511f123164602042ab2bCF02111fA5D3Fe97CD"
     },
   },
   plugins: ["solidity-coverage"]
