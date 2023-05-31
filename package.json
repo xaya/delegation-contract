@@ -1,6 +1,6 @@
 {
   "name": "@xaya/eth-delegator-contract",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A Solidity contract for move delegation with support for meta transactions and selective delegation.",
   "author": "Daniel Kraft <daniel@xaya.io>",
   "license": "MIT",
