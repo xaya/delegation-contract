@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (C) 2022 Autonomous Worlds Ltd
+// Copyright (C) 2022-2025 Autonomous Worlds Ltd
 
 pragma solidity ^0.8.13;
 
@@ -9,7 +9,7 @@ import "./NamePermissions.sol";
 import "@openzeppelin/contracts/metatx/ERC2771Context.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@xaya/eth-account-registry/contracts/IXayaAccounts.sol";
+import "@xaya/eth-account-registry/src/IXayaAccounts.sol";
 
 /**
  * @dev The main delegation contract.  It uses the permissions tree system
@@ -231,6 +231,12 @@ contract XayaDelegation is NamePermissions, ERC2771Context, IERC721Receiver
       internal view override(Context, ERC2771Context) returns (bytes calldata)
   {
     return ERC2771Context._msgData ();
+  }
+
+  function _contextSuffixLength ()
+      internal view override(Context, ERC2771Context) returns (uint256)
+  {
+    return ERC2771Context._contextSuffixLength ();
   }
 
   /* ************************************************************************ */

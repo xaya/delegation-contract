@@ -5,17 +5,47 @@ const truffleAssert = require ("truffle-assertions");
 const truffleContract = require ("@truffle/contract");
 const { time } = require ("@openzeppelin/test-helpers");
 
+/* Helper function to convert forge to truffle artifact format,
+   so we can use the forge-built artifacts from the accounts contract
+   repository with truffle/contract.  */
+function forgeToTruffleArtifact(forgeArtifact) {
+  const truffleArtifact = {
+    contractName: forgeArtifact.contractName || forgeArtifact.metadata?.settings?.compilationTarget ? Object.keys(forgeArtifact.metadata.settings.compilationTarget)[0].split(':')[1] : 'Unknown',
+    abi: forgeArtifact.abi,
+    bytecode: typeof forgeArtifact.bytecode === 'object' 
+      ? forgeArtifact.bytecode.object 
+      : forgeArtifact.bytecode,
+    deployedBytecode: typeof forgeArtifact.deployedBytecode === 'object'
+      ? forgeArtifact.deployedBytecode.object
+      : forgeArtifact.deployedBytecode,
+    sourceMap: forgeArtifact.bytecode?.sourceMap || '',
+    deployedSourceMap: forgeArtifact.deployedBytecode?.sourceMap || '',
+    source: forgeArtifact.source || '',
+    sourcePath: forgeArtifact.sourcePath || '',
+    ast: forgeArtifact.ast || {},
+    compiler: {
+      name: 'solc',
+      version: forgeArtifact.metadata?.compiler?.version || 'unknown'
+    },
+    networks: {},
+    schemaVersion: '3.4.3',
+    updatedAt: new Date().toISOString()
+  };
+
+  return truffleArtifact;
+}
+
 const wchiData = require ("@xaya/wchi/build/contracts/WCHI.json");
 const WCHI = truffleContract (wchiData);
 WCHI.setProvider (web3.currentProvider);
 
 const policyData
-    = require ("@xaya/eth-account-registry/build/contracts/TestPolicy.json");
-const TestPolicy = truffleContract (policyData);
+    = require ("@xaya/eth-account-registry/out/TestPolicy.sol/TestPolicy.json");
+const TestPolicy = truffleContract (forgeToTruffleArtifact (policyData));
 TestPolicy.setProvider (web3.currentProvider);
 const accountsData
-    = require ("@xaya/eth-account-registry/build/contracts/XayaAccounts.json");
-const XayaAccounts = truffleContract (accountsData);
+    = require ("@xaya/eth-account-registry/out/XayaAccounts.sol/XayaAccounts.json");
+const XayaAccounts = truffleContract (forgeToTruffleArtifact (accountsData));
 XayaAccounts.setProvider (web3.currentProvider);
 
 const UnsafeForwarder = artifacts.require ("UnsafeForwarder");

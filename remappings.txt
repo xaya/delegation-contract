@@ -1,0 +1,2 @@
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@xaya/eth-account-registry/src/=lib/polygon-contract/src/

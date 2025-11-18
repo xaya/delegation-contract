@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (C) 2022 Autonomous Worlds Ltd
+// Copyright (C) 2022-2025 Autonomous Worlds Ltd
 
 pragma solidity ^0.8.13;
 
@@ -171,6 +171,7 @@ library JsonSubObject
     res = subObject;
     for (int i = int (path.length) - 1; i >= 0; --i)
       {
+        // forge-lint: disable-next-line(unsafe-typecast)
         string memory key = path[uint (i)];
         require (isSafeKey (key), "invalid path key");
         res = string (abi.encodePacked ("{\"", key, "\":", res, "}"));

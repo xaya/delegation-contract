@@ -6,7 +6,7 @@ const web3 = new Web3 ();
 module.exports = {
   compilers: {
     solc: {
-      version: "0.8.13",
+      version: "0.8.20",
       settings: {
         optimizer: {
           enabled: true,
