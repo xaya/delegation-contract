@@ -11,6 +11,13 @@ exclude_lints = [
   "screaming-snake-case-immutable",
   "unaliased-plain-import",
 ]
+# Tests contain lots of unchecked ERC20 transfer calls.  We can't silence
+# them path-based and automatically, and shouldn't silence those warnings
+# also for production.  Thus we need to go with not linting test files
+# by default.
+ignore = [
+  "test/**/*.sol",
+]
 
 [etherscan]
 polygon = { key = "${APIKEY}" }
