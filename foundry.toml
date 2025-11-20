@@ -1,0 +1,23 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+optimizer = true
+optimizer_runs = 1_000_000
+
+[lint]
+exclude_lints = [
+  "mixed-case-function",
+  "screaming-snake-case-immutable",
+  "unaliased-plain-import",
+]
+# Tests contain lots of unchecked ERC20 transfer calls.  We can't silence
+# them path-based and automatically, and shouldn't silence those warnings
+# also for production.  Thus we need to go with not linting test files
+# by default.
+ignore = [
+  "test/**/*.sol",
+]
+
+[etherscan]
+polygon = { key = "${APIKEY}" }

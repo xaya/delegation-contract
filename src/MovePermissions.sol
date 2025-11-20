@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (C) 2022 Autonomous Worlds Ltd
+// Copyright (C) 2022-2025 Autonomous Worlds Ltd
 
 pragma solidity ^0.8.13;
 
@@ -440,6 +440,7 @@ library MovePermissions
 
     for (int i = int (map.keys.length) - 1; i >= 0; --i)
       {
+        // forge-lint: disable-next-line(unsafe-typecast)
         address current = map.keys[uint (i)];
         if (map.forAddress[current].expiration < atTime)
           removeEntry (map, current);
@@ -462,6 +463,7 @@ library MovePermissions
        the last one) during the process.  */
     for (int i = int (node.keys.length) - 1; i >= 0; --i)
       {
+        // forge-lint: disable-next-line(unsafe-typecast)
         string memory current = node.keys[uint (i)];
         expireTree (node.children[current], atTime);
         removeChildIfEmpty (node, current);
