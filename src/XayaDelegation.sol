@@ -89,8 +89,7 @@ contract XayaDelegation is NamePermissions, ERC2771Context, IERC721Receiver
        it from the signature always.  But that runs the risk of sending names
        to an unspendable address if the user messes up the signature, so we
        are explicit here to ensure this can't happen as easily.  */
-    address fromSig = accounts.permitOperator (address (this), signature);
-    require (owner == fromSig, "signature did not match owner");
+    accounts.permitOperator (owner, address (this), signature);
   }
 
   /**

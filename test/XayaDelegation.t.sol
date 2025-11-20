@@ -81,7 +81,8 @@ contract XayaDelegationTest is Test
   function permitSignature (uint256 key)
       internal view returns (bytes memory)
   {
-    bytes memory message = acc.permitOperatorMessage (address (del));
+    bytes memory message
+        = acc.permitOperatorMessage (vm.addr (key), address (del));
     bytes32 hash = ECDSA.toEthSignedMessageHash (message);
     (uint8 v, bytes32 r, bytes32 s) = vm.sign (key, hash);
     return abi.encodePacked (r, s, v);
@@ -161,7 +162,7 @@ contract XayaDelegationTest is Test
     vm.prank (kiloChi);
     del.registerFor ("p", "x", alice, sgn);
 
-    vm.expectRevert ("signature did not match owner");
+    vm.expectRevert ("invalid signature");
     vm.prank (kiloChi);
     del.registerFor ("p", "y", bob, sgn);
 
