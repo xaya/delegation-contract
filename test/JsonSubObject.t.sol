@@ -38,41 +38,65 @@ contract JsonSubObjectTest is Test
                  string.concat ("{\"x\":{\"y\":{\"z\":", subObject, "}}}"));
   }
 
-  function test_validSubObjects () public view
+  function test_validSubValues () public view
   {
-    string[] memory tests = new string[] (3);
-    tests[0] = "{}";
-    tests[1] = "{\"abc\": [1, 2, 3]}";
-    tests[2] = "{\"foo\": \"}}}\\\"}}}\"}";
+    string[] memory tests = new string[] (16);
+
+    tests[0] = "true";
+    tests[1] = "false";
+    tests[2] = "null";
+
+    tests[3] = "-42";
+    tests[4] = "0";
+    tests[5] = "120";
+
+    tests[6] = "\"\"";
+    tests[7] = "\"foo\"";
+    tests[8] = "\"fo\\n\"";
+    tests[9] = "\"fo\\\"o\"";
+
+    tests[10] = "{}";
+    tests[11] = "{\"abc\": [1, 2, 3]}";
+    tests[12] = "{\"foo\": \"}}}\\\"}}}\"}";
+
+    tests[13] = "[]";
+    tests[14] = "[1, 2, 3]";
+    tests[15] = "[[[[null]]]]";
 
     for (uint i = 0; i < tests.length; ++i)
       vm.assertEq (this.atPath (stringArray (), tests[i]), tests[i]);
   }
 
-  function test_invalidSubObjects () public
+  function test_invalidSubValues () public
   {
-    string[] memory tests = new string[] (11);
+    string[] memory tests = new string[] (18);
 
-    /* Only JSON objects without leading or trailing whitespace are allowed
-       for simplicity.  */
+    /* Invalid or unsupported basic expressions, or with whitespace.  */
     tests[0] = "";
     tests[1] = " {}";
     tests[2] = "{} ";
-    tests[3] = "123";
-    tests[4] = "null";
-    tests[5] = "[1, 2, 3]";
+    tests[3] = "12.3";
+    tests[4] = "05";
+    tests[5] = "-0";
+    tests[6] = "nullx";
+    tests[7] = " [1, 2, 3]";
+    tests[8] = "\"foo";
+    tests[9] = "\"foo\\\"";
+    tests[10] = "\"foo\" ";
 
     /* Unmatched strings or brackets.  */
-    tests[6] = "{\"foo}";
-    tests[7] = "{\"foo\":{\"bar\":42}";
-    tests[8] = "{\"foo\":{\"bar\":42}}}";
+    tests[11] = "{\"foo}";
+    tests[12] = "{\"foo\":{\"bar\":42}";
+    tests[13] = "{\"foo\":{\"bar\":42}}}";
+    tests[14] = "[1, [2]";
+    tests[15] = "[1, [2, ]]]";
 
     /* This would be an actual injection attack.  */
-    tests[9] = "{},\"other\":{\"injection\":true}";
+    tests[16] = "{},\"other\":{\"injection\":true}";
 
     /* We detect ends of string literals correctly, even if backslashes
        are there to confuse us.  */
-    tests[10] = "{\"abc\": \"string\\\\\"},\"other\":{\"injection\":true}";
+    tests[17] = "{\"abc\": \"string\\\\\"},\"other\":{\"injection\":true}";
 
     for (uint i = 0; i < tests.length; ++i)
       {

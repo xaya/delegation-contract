@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
-// Copyright (C) 2022-2025 Autonomous Worlds Ltd
+// Copyright (C) 2022-2026 Autonomous Worlds Ltd
 
 pragma solidity ^0.8.13;
 
+import "@openzeppelin/contracts/utils/Strings.sol";
+
 /**
  * @dev A Solidity library that implements building of JSON moves
- * where a user-supplied "sub object" is placed at some specified
+ * where a user-supplied "sub value" is placed at some specified
  * path (e.g. user-supplied move for a particular game ID in Xaya).
  * This includes validation required to ensure that users cannot
  * "inject" fake JSON strings to manipulate and break out of the
@@ -15,17 +17,150 @@ library JsonSubObject
 {
 
   /**
+   * @dev Tries to read a complete string literal from the given input string,
+   * starting at position start.  Returns true if a (potentially valid) string
+   * literal was found starting at this position (opening quote), and ending
+   * (character after the closing quote) at the returned end.  Returns false
+   * if no valid string literal was found or it was not closed before the
+   * end of the string.
+   */
+  function readStringLiteral (bytes memory str, uint start)
+      private pure returns (bool, uint)
+  {
+    uint p = start;
+    if (p >= str.length || str[p] != '"')
+      return (false, p);
+
+    bool afterBackslash = false;
+    for (++p; p < str.length; ++p)
+      {
+        /* Whatever comes after a backslash doesn't matter.  It cannot close
+           the string literal.  */
+        if (afterBackslash)
+          {
+            afterBackslash = false;
+            continue;
+          }
+      
+        if (str[p] == '"')
+          return (true, p + 1);
+
+        if (str[p] == '\\')
+          afterBackslash = true;
+      }
+
+    /* We reached the end of the string without finding a closing quote.  */
+    return (false, p);
+  }
+
+  /**
+   * @dev Tries to read a complete integer literal from the given input string,
+   * starting at position start.  Returns true if a potentially valid literal
+   * was found, and false otherwise.  Returns end pointing to the character
+   * after the last character consumed.
+   */
+  function readIntLiteral (bytes memory str, uint start)
+      private pure returns (bool, uint)
+  {
+    uint p = start;
+    if (p >= str.length)
+      return (false, p);
+
+    /* If the string is just "0", that is valid.  Otherwise it may not
+       start with a zero, and we follow the parsing path below.  */
+    if (str[p] == '0')
+      return (true, p + 1);
+
+    /* Consume a potential initial "-" sign.  */
+    if (str[p] == '-')
+      ++p;
+
+    /* We expect a non-zero digit as the first one.  */
+    if (p >= str.length || str[p] < '1' || str[p] > '9')
+      return (false, p);
+
+    /* Now zero or more digits (0-9) may follow.  */
+    for (++p; p < str.length; ++p)
+      if (str[p] < '0' || str[p] > '9')
+        break;
+
+    return (true, p);
+  }
+
+  /**
+   * @dev Tries to read a complete expression enclosed by a pair of {}
+   * (for objects) or [] (for arrays).  Returns true if an expression
+   * with matching brackets of this type can be found, and returns false if
+   * there is something wrong (does not start with the opening bracket, or
+   * brackets mismatched).  Returns end pointing to the character after
+   * the last character consumed.
+   *
+   * This only validates that the read expression has balanced (potentially
+   * nested) brackets of the given type, and it ignores everything inside
+   * a string literal.
+   */
+  function readBracketExpression (bytes memory str, uint start,
+                                  bytes1 open, bytes1 close)
+      private pure returns (bool, uint)
+  {
+    uint p = start;
+
+    /* The very first character should be the opening bracket.  */
+    if (p >= str.length || str[p] != open)
+      return (false, p);
+
+    int depth = 1;
+    for (++p; p < str.length; ++p)
+      {
+        /* While we have more to process, we should never leave the
+           outermost layer of brackets.  This is checked when processing
+           the closing bracket, but just double-check it here.  */
+        assert (depth > 0);
+
+        /* If a string literal comes, just skip it.  */
+        (bool isString, uint afterString) = readStringLiteral (str, p);
+        if (isString)
+          {
+            /* The continue will run ++p, and we want to continue processing
+               in the next iteration at afterString directly.  */
+            p = afterString - 1;
+            continue;
+          }
+
+        /* We already know there is no *valid* string literal.  If there still
+           is an opening quote, it means this is invalid.  */
+        if (str[p] == '"')
+          return (false, p);
+
+        if (str[p] == open)
+          ++depth;
+        else if (str[p] == close)
+          {
+            --depth;
+            assert (depth >= 0);
+            if (depth == 0)
+              return (true, p + 1);
+          }
+      }
+
+    /* We should have closed all brackets within the data available, so if
+       we reach here, the value is not valid.  */
+    assert (depth > 0);
+    return (false, p);
+  }
+
+  /**
    * @dev Checks if a string is a "safe" JSON object serialisation.  This means
-   * that the string is either a valid and complete JSON object, or that it
-   * will certainly produce invalid JSON if concatenated with other JSON
-   * strings and placed at the position for some JSON value.
-   * For simplicity, this method does not accept leading or trailing
-   * whitespace around the outer-most {} of the object.
+   * that the string is either a valid and complete JSON value (where we
+   * support a subset of full JSON), or that it will certainly produce invalid
+   * JSON if concatenated with other JSON strings and placed at the position
+   * for some JSON value.  For simplicity, this method does not accept leading
+   * or trailing whitespace around the expression.
    *
    * This method is at the heart of the safe sub-object construction.
    * It ensures that the user-provided string cannot lead to an "injection"
    * of JSON syntax that breaks out of the intended path it is placed at,
-   * either because it is a valid and proper JSON object, or because it will
+   * either because it is a valid and proper JSON value, or because it will
    * at least produce invalid JSON in the end which leads to invalid moves.
    * By allowing the latter, we can simplify the processing necessary in
    * Solidity to a minimum.
@@ -46,84 +181,44 @@ library JsonSubObject
        injecting move data for another game into what is, in the end,
        a fully valid JSON move.
 
-       The main thing we need to do for this is ensure that the outermost
-       {} brackets of the JSON object are properly matched; the value should
-       begin with { and end with }, and while processing the string, there
-       should always be at least one level of {} brackets open.  Other brackets
-       (i.e. []) are not relevant, because if they are mismatched, it will
-       ensure the final JSON value is certainly invalid.
-
-       In addition to that, we need to track string literals well enough to
-       ignore any brackets inside of them.  For this, we need to keep track
-       of whether or not a string literal is open, and also properly handle
-       \" (do not close it) and \\ (if followed by ", it closes the string).
-
-       Any other validation or processing is not necessary.  We also don't have
-       to deal with UTF-8 characters in any case (those can be part of
-       string literals), as those are cannot interfere with the basic
-       control syntax in JSON (which is ASCII).  Any invalid UTF-8 will just
-       result in invalid UTF-8 (and thus, and invalid value) in the end.  */
+       Note that we don't have to deal with UTF-8 characters in any case
+       (those can be part of string literals), as those are cannot interfere
+       with the basic control syntax in JSON (which is ASCII).  Any invalid
+       UTF-8 will just result in invalid UTF-8 (and thus, and invalid value)
+       in the end.  */
 
     bytes memory data = bytes (str);
 
-    /* The very first character should be the opening {.  */
-    if (data.length < 1 || data[0] != '{')
-      return false;
+    /* Check for valid boolean or null literals.  */
+    if (Strings.equal (str, "true") || Strings.equal (str, "false")
+          || Strings.equal (str, "null"))
+      return true;
 
-    int depth = 1;
-    bool openString = false;
-    bool afterBackslash = false;
+    /* Check to see if we have a string, integer, object or array literal
+       using the respective helper functions.  Note that in any case, it should
+       always consume the entire input.  */
 
-    for (uint i = 1; i < data.length; ++i)
-      {
-        /* While we have more to process, we should never leave the
-           outermost layer of brackets.  This is checked when processing
-           the closing bracket, but just double-check it here.  */
-        assert (depth > 0);
+    bool found;
+    uint end;
+    
+    (found, end) = readStringLiteral (data, 0);
+    if (found)
+      return end == data.length;
 
-        /* Check if we are inside a string literal.  If we are, we need to
-           look for its closing ", and handle backslash escapes.  */
-        if (openString)
-          {
-            if (afterBackslash)
-              {
-                /* We don't have to care whatever comes after an escape.
-                   The thing that matters is that it is not a closing ".  */
-                afterBackslash = false;
-                continue;
-              }
+    (found, end) = readIntLiteral (data, 0);
+    if (found)
+      return end == data.length;
 
-            if (data[i] == '"')
-              openString = false;
-            else if (data[i] == '\\')
-              afterBackslash = true;
+    (found, end) = readBracketExpression (data, 0, '{', '}');
+    if (found)
+      return end == data.length;
 
-            continue;
-          }
+    (found, end) = readBracketExpression (data, 0, '[', ']');
+    if (found)
+      return end == data.length;
 
-        /* We are not inside a string literal, so track brackets and
-           watch for opening of strings.  */
-
-        assert (!afterBackslash);
-
-        if (data[i] == '"')
-          openString = true;
-        else if (data[i] == '{')
-          ++depth;
-        else if (data[i] == '}')
-          {
-            --depth;
-            assert (depth >= 0);
-            /* We should always have a depth larger than zero, except for
-               the very last character which will be the final closing } that
-               leads to depth zero.  */
-            if (depth == 0 && i + 1 != data.length)
-              return false;
-          }
-      }
-
-    /* At the end, all brackets should indeed be closed.  */
-    return (depth == 0);
+    /* No match to a provably-safe type of value was found.  */
+    return false;
   }
 
   /**
@@ -153,22 +248,22 @@ library JsonSubObject
 
   /**
    * @dev Builds up a string representing a JSON object where the user-supplied
-   * sub-object is present at the given "path" within the full object.
+   * value is present at the given "path" within the full object.
    * Elements of "path" are supposed to be simple field names that don't
    * need escaping inside a JSON string literal.
    *
-   * If the user-supplied string is indeed a valid JSON object, then this
-   * method returns valid JSON as well (for the full object).  If the
-   * subobject string is not a valid JSON object, then this method may
+   * If the user-supplied string is indeed a valid, supported JSON value, then
+   * this method returns valid JSON as well (for the full object).  If the
+   * value string is not a valid JSON value, then this method may
    * either revert or return a string that is invalid JSON (but it is guaranteed
    * to not return successfully a string that is valid).
    */
-  function atPath (string[] memory path, string memory subObject)
+  function atPath (string[] memory path, string memory value)
       internal pure returns (string memory res)
   {
-    require (isSafe (subObject), "possible JSON injection attempt");
+    require (isSafe (value), "possible JSON injection attempt");
 
-    res = subObject;
+    res = value;
     for (int i = int (path.length) - 1; i >= 0; --i)
       {
         // forge-lint: disable-next-line(unsafe-typecast)
