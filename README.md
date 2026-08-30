@@ -34,8 +34,13 @@ We have deployed the contract on the following networks:
 
 | Network | Address |
 | ------- | ------- |
-| Polygon | [0xEB4c2EF7874628B646B8A59e4A309B94e14C2a6B](https://polygonscan.com/address/0xeb4c2ef7874628b646b8a59e4a309b94e14c2a6b) |
+| Polygon | [0x25c69358A616D004725D1d0B113B7DD1CF40A0D7](https://polygonscan.com/address/0x25c69358A616D004725D1d0B113B7DD1CF40A0D7) |
 | Mumbai | [0xD5fd31CfD529498B1668fE9dFa336c475AC57C76](https://mumbai.polygonscan.com/address/0xd5fd31cfd529498b1668fe9dfa336c475ac57c76) |
 
-The deployment was based on commit `6395df328834632154e837199fb62e11896e3de4`,
-which has the same smart-contract code that was audited and is in version 1.0.0.
+The Polygon deployment is based on
+commit `39904e2e05a06aab7610821bd2f78a9d7a9d7403`.
+
+The Mumbai deployment is based on `6395df328834632154e837199fb62e11896e3de4` and
+does not match latest code.  The previous Polygon deployment based on this
+same commit is on address
+[0xEB4c2EF7874628B646B8A59e4A309B94e14C2a6B](https://polygonscan.com/address/0xeb4c2ef7874628b646b8a59e4a309b94e14c2a6b).
