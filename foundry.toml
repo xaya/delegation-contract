@@ -8,6 +8,7 @@ optimizer_runs = 1_000_000
 [lint]
 exclude_lints = [
   "mixed-case-function",
+  "screaming-snake-case-const",
   "screaming-snake-case-immutable",
   "unaliased-plain-import",
 ]
